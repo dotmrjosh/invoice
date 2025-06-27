@@ -72,7 +72,7 @@ func writeTitle(pdf *gopdf.GoPdf, title, id, date string) {
 func writeDueDate(pdf *gopdf.GoPdf, due string) {
 	_ = pdf.SetFont("Inter", "", 9)
 	pdf.SetTextColor(75, 75, 75)
-	pdf.SetX(rateColumnOffset)
+	pdf.SetX(rateColumnOffset - 40)
 	_ = pdf.Cell(nil, "Due Date")
 	pdf.SetTextColor(0, 0, 0)
 	_ = pdf.SetFontSize(11)
