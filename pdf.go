@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	quantityColumnOffset = 360
-	rateColumnOffset     = 405
+ 	quantityColumnOffset = 360
+ 	rateColumnOffset     = 405
 	amountColumnOffset   = 480
 )
 
@@ -105,7 +105,7 @@ func writeBillTo(pdf *gopdf.GoPdf, to string) {
 	pdf.Br(64)
 }
 
-func writeHeaderRow(pdf *gopdf.GoPdf) {
+func writeHeaderRow(pdf *gopdf.GoPdf, taxInclusive bool) {
 	_ = pdf.SetFont("Inter", "", 9)
 	pdf.SetTextColor(55, 55, 55)
 	_ = pdf.Cell(nil, "ITEM")
@@ -114,7 +114,11 @@ func writeHeaderRow(pdf *gopdf.GoPdf) {
 	pdf.SetX(rateColumnOffset)
 	_ = pdf.Cell(nil, "RATE")
 	pdf.SetX(amountColumnOffset)
-	_ = pdf.Cell(nil, "AMOUNT")
+	amountStr := "AMOUNT"
+	if taxInclusive {
+	  amountStr += " (tax incl.)"
+	}
+	_ = pdf.Cell(nil, amountStr)
 	pdf.Br(24)
 }
 
@@ -149,7 +153,7 @@ func writeFooter(pdf *gopdf.GoPdf, id string) {
 	pdf.Br(48)
 }
 
-func writeRow(pdf *gopdf.GoPdf, item string, quantity int, rate float64) {
+func writeRow(pdf *gopdf.GoPdf, item string, quantity int, rate float64, tax float64, taxInclusive bool) {
 	_ = pdf.SetFont("Inter", "", 11)
 	pdf.SetTextColor(0, 0, 0)
 
@@ -166,23 +170,40 @@ func writeRow(pdf *gopdf.GoPdf, item string, quantity int, rate float64) {
 	pdf.Br(24)
 }
 
-func writeTotals(pdf *gopdf.GoPdf, subtotal float64, tax float64, discount float64) {
+func writeTotals(pdf *gopdf.GoPdf, subtotal float64, tax float64, taxInclusive bool, discount float64) {
 	pdf.SetY(600)
 
-	writeTotal(pdf, subtotalLabel, subtotal)
+	var baseTotal float64
+	var taxTotal float64
+	if taxInclusive {
+		one := subtotal / ((1 + tax) * 100)
+		baseTotal = one * 100
+		taxTotal = one * (tax * 100)
+	} else {
+		baseTotal = subtotal
+		taxTotal = tax * subtotal
+	}
+
+	taxAmount := " ("+strconv.FormatFloat(tax * 100, 'f', 0, 64)+"%)"
+	subTotalLabelStr := subtotalLabel
+	if taxInclusive {
+	  subTotalLabelStr += " (before tax)"
+	}
+
+	writeTotal(pdf, subTotalLabelStr, baseTotal)
 	if tax > 0 {
-		writeTotal(pdf, taxLabel, tax)
+		writeTotal(pdf, taxLabel+taxAmount, taxTotal)
 	}
 	if discount > 0 {
 		writeTotal(pdf, discountLabel, discount)
 	}
-	writeTotal(pdf, totalLabel, subtotal+tax-discount)
+	writeTotal(pdf, totalLabel, baseTotal+taxTotal-discount)
 }
 
 func writeTotal(pdf *gopdf.GoPdf, label string, total float64) {
 	_ = pdf.SetFont("Inter", "", 9)
 	pdf.SetTextColor(75, 75, 75)
-	pdf.SetX(rateColumnOffset)
+	pdf.SetX(rateColumnOffset - 40)
 	_ = pdf.Cell(nil, label)
 	pdf.SetTextColor(0, 0, 0)
 	_ = pdf.SetFontSize(12)

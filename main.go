@@ -33,9 +33,10 @@ type Invoice struct {
 	Quantities []int     `json:"quantities" yaml:"quantities"`
 	Rates      []float64 `json:"rates" yaml:"rates"`
 
-	Tax      float64 `json:"tax" yaml:"tax"`
-	Discount float64 `json:"discount" yaml:"discount"`
-	Currency string  `json:"currency" yaml:"currency"`
+	Tax          float64 `json:"tax" yaml:"tax"`
+	TaxInclusive bool    `json:"tax-inclusive" yaml:"tax-inclusive"`
+	Discount     float64 `json:"discount" yaml:"discount"`
+	Currency     string  `json:"currency" yaml:"currency"`
 
 	Note string `json:"note" yaml:"note"`
 }
@@ -82,6 +83,7 @@ func init() {
 	generateCmd.Flags().StringVar(&file.Due, "due", defaultInvoice.Due, "Payment due date")
 
 	generateCmd.Flags().Float64Var(&file.Tax, "tax", defaultInvoice.Tax, "Tax")
+	generateCmd.Flags().BoolVar(&file.TaxInclusive, "tax-inclusive", defaultInvoice.TaxInclusive, "Tax Inclusive")
 	generateCmd.Flags().Float64VarP(&file.Discount, "discount", "d", defaultInvoice.Discount, "Discount")
 	generateCmd.Flags().StringVarP(&file.Currency, "currency", "c", defaultInvoice.Currency, "Currency")
 
@@ -129,7 +131,7 @@ var generateCmd = &cobra.Command{
 		writeLogo(&pdf, file.Logo, file.From)
 		writeTitle(&pdf, file.Title, file.Id, file.Date)
 		writeBillTo(&pdf, file.To)
-		writeHeaderRow(&pdf)
+		writeHeaderRow(&pdf, file.TaxInclusive)
 		subtotal := 0.0
 		for i := range file.Items {
 			q := 1
@@ -142,13 +144,13 @@ var generateCmd = &cobra.Command{
 				r = file.Rates[i]
 			}
 
-			writeRow(&pdf, file.Items[i], q, r)
+			writeRow(&pdf, file.Items[i], q, r, file.Tax, file.TaxInclusive)
 			subtotal += float64(q) * r
 		}
 		if file.Note != "" {
 			writeNotes(&pdf, file.Note)
 		}
-		writeTotals(&pdf, subtotal, subtotal*file.Tax, subtotal*file.Discount)
+		writeTotals(&pdf, subtotal, file.Tax, file.TaxInclusive, subtotal*file.Discount)
 		if file.Due != "" {
 			writeDueDate(&pdf, file.Due)
 		}
